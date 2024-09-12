@@ -6,6 +6,8 @@ export interface IUser extends Document {
   password: string;  
   role: 'user' | 'admin';
   phone: string;
+  verificationCode?: string;
+  verificationCodeExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -16,6 +18,8 @@ const UserSchema: Schema = new Schema({
   password: { type: String, required: true },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   phone: { type: String },
+  verificationCode: String,
+  verificationCodeExpires: Date,
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

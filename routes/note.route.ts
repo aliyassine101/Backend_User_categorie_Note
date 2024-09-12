@@ -4,13 +4,13 @@ import {authMiddleware} from '../middlewares/auth'
 const router = express.Router();
 import Note from '../models/note.model';
 
-router.post('/ADD_NOTE', addNote);
-router.post('/GET_ALL_NOTES', getAllNotes);
-router.post('/GET_NOTE_BY_ID', getNoteById);
-router.post('/UPDATE_NOTE_BY_ID', updateNoteById); 
-router.post('/DELETE_NOTE_BY_ID', deleteNoteById);
-router.post('/SEARCH_AND_FILTER_NOTES', search_and_filter_notes);
-router.post('/EXPORT_NOTES_TO_EXCEL', exportNotesToExcel);
+router.post('/ADD_NOTE', authMiddleware,addNote);
+router.post('/GET_ALL_NOTES',authMiddleware, getAllNotes);
+router.post('/GET_NOTE_BY_ID', authMiddleware,getNoteById);
+router.post('/UPDATE_NOTE_BY_ID',authMiddleware, updateNoteById); 
+router.post('/DELETE_NOTE_BY_ID',authMiddleware, deleteNoteById);
+router.post('/SEARCH_AND_FILTER_NOTES', authMiddleware,search_and_filter_notes);
+router.post('/EXPORT_NOTES_TO_EXCEL',authMiddleware, exportNotesToExcel);
 
 
 
