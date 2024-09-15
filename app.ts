@@ -30,31 +30,4 @@ app.use('/auth', authRoutes);
 app.use('/categorie',categorieRoutes);
 app.use('/note',noteRoutes);
 
-
-
-
-app.post('/reset-password', async (req: Request, res: Response) => {
-  const { email, verificationCode, newPassword } = req.body;
-
-  try {
-    const user = await User.findOne({
-      email,
-      verificationCode,
-      verificationCodeExpires: { $gt: Date.now() },
-    });
-
-    if (!user) {
-      return res.status(400).send('Invalid or expired verification code.');
-    }
-
-    user.password = await bcrypt.hash(newPassword, 10);
-    user.verificationCode = undefined;
-    user.verificationCodeExpires = undefined;
-    await user.save();
-
-    res.status(200).send('Password has been reset successfully.');
-  } catch (error) {
-    res.status(500).send('Server error.');
-  }
-});
 export default app;
