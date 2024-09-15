@@ -10,7 +10,7 @@ router.post('/GET_NOTE_BY_ID', authMiddleware,getNoteById);
 router.post('/UPDATE_NOTE_BY_ID',authMiddleware, updateNoteById); 
 router.post('/DELETE_NOTE_BY_ID',authMiddleware, deleteNoteById);
 router.post('/SEARCH_AND_FILTER_NOTES', authMiddleware,search_and_filter_notes);
-router.post('/EXPORT_NOTES_TO_EXCEL',authMiddleware, exportNotesToExcel);
+router.get('/EXPORT_NOTES_TO_EXCEL', exportNotesToExcel);
 
 
 

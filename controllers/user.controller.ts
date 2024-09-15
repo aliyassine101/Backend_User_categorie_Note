@@ -60,26 +60,34 @@ export const getProfiles= async (req:Request, res:Response) => {
 }
 }
 
-
-export const resetPassword= async (req:Request, res:Response) => {
-  
-  try {
-    const { email,newpassword} = req.body; 
-    console.log('the pass: '+newpassword) ;
-
-    const user = await UserService.resetPassword(email,newpassword);
-    console.log('before display');
-    res.status(200).send(user); // Respond with the profile data
-} catch (error: unknown) {
-  // Type assertion to check if the error is an instance of Error
-  if (error instanceof Error) {
-      res.status(404).send({ message: error.message }); // Handle known errors
-  } else {
-      // Handle unknown errors
-      res.status(500).send({ message: 'An unexpected error occurred' });
+export const requestpasswordreset=async(req:Request,res:Response)=>{
+  try{
+    const {email}=req.body;
+    const verficationCode= await UserService.requestpasswordreset(email);
+    console.log('is :',verficationCode)
+    if(!email){
+      res.status(400).send('error with send code')
+    }
+    res.status(200).send(verficationCode)
+  }catch(error){
+    res.status(500).send(error);
   }
 }
+
+export const resetpassword=async(req:Request,res:Response)=>{
+  try {
+    const { email, verificationCode, newPassword } = req.body;
+    const result =await UserService.resetpassword(email, verificationCode, newPassword);
+    if(!result){
+      return res.status(500).send('is not successfully')
+    }
+    return res.status(200).send(result);
+  } catch (error) {
+    return res.status(500).send(error)
+  }
 }
+
+
 
 
 

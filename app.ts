@@ -33,55 +33,6 @@ app.use('/note',noteRoutes);
 
 
 
-
-const transport = nodemailer.createTransport({
-  host: "live.smtp.mailtrap.io",
-  port: 587,
-  auth: {
-    user: "api",
-    pass: "f39aac2e076229fc6b302cce3bf52e8f"
-  }
-});
-
-// Request password reset
-app.post('/request-password-reset', async (req: Request, res: Response) => {
-  const { email } = req.body;
-
-  try {
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(400).send('No user found with this email.');
-    }
-
-    const verificationCode = crypto.randomInt(100000, 999999).toString(); // 6-digit code
-    user.verificationCode = verificationCode;
-    user.verificationCodeExpires = new Date(Date.now() + 3600000); // 1 hour expiration
-    await user.save();
-
-    console.log(user.verificationCode);
-
-    const mailOptions = {
-      from:"mailtrap@demomailtrap.com" ,
-      to: email,
-      subject: 'Password Reset Request',
-      text: `You requested a password reset. Use the following code to reset your password: ${verificationCode}`,
-    };
-
-    await transport.sendMail(mailOptions);
-    res.status(200).send(verificationCode);
-  } catch (error) {
-    console.log('error :'+error)
-    res.status(500).send('Server error.');
-  }
-});
-
-
-
-
-
-
-
 app.post('/reset-password', async (req: Request, res: Response) => {
   const { email, verificationCode, newPassword } = req.body;
 

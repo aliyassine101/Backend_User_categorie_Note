@@ -1,10 +1,21 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IUser extends Document {
+  username: string;
+  email: string;
+}
+
+// Define the Categorie interface
+export interface ICategorie extends Document {
+  name: string;
+}
+
+// Define the Note interface
 export interface INote extends Document {
-  title:string;
-  content:string;
-  categorie:mongoose.Schema.Types.ObjectId; // heda bsta3mlo bel populate
-  user:mongoose.Schema.Types.ObjectId;
+  title: string;
+  content: string;
+  categorie: ICategorie; // This should be of type ICategorie, not ObjectId
+  user: IUser; // This should be of type IUser, not ObjectId
   createdAt: Date;
   updatedAt: Date;
 }

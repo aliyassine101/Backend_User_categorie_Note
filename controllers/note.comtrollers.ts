@@ -5,15 +5,16 @@ import ExcelJS from 'exceljs';
 // Example POST endpoint to create a new category
 export const addNote = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { title, content, categorie, user } = req.body;
+        const { title, content, categorie } = req.body;
+        const user=req.userId;
 
         if (!title || !categorie || !user) {
             return res.status(400).json({ message: 'title and categorie and user are required.' });
         }
 
-        const newNote = new Note({ title, content, categorie, user });
-        await newNote.save();
-
+        const newNote = await NoteService.addNote({title, content, categorie, user})
+        console.log(newNote)
+    
         return res.status(201).json(newNote);
     } catch (error) {
         console.error('Error creating category:', error);
@@ -23,23 +24,24 @@ export const addNote = async (req: Request, res: Response, next: NextFunction) =
 
 export const getAllNotes = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const result = await Note.find()
-            .populate('categorie', 'name -_id')
-            .populate('user', 'username email  -_id');
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = parseInt(req.query.limit as string, 10) || 10;
 
-
-        // Ensure `result` is defined and contains the data you're expecting
-        if (!result) {
-            return res.status(404).json({ message: 'notes not found' });
+        // Ensure `page` and `limit` are positive integers
+        if (page < 1 || limit < 1) {
+            return res.status(400).json({ message: 'Page and limit must be greater than 0.' });
         }
 
-        return res.status(200).json(result); // Use 200 for successful GET requests
-    } catch (error: unknown) {
-        // Log the error for debugging
-        console.error('Error fetching notes:', error);
+        const result = await NoteService.getAllNote(page, limit);   
 
-        // Return a proper error response
-        return res.status(500).json({ message: 'An error occurred while fetching notes ', error });
+        if (!result) {
+            return res.status(404).json({ message: 'Notes not found' });
+        }
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error('Error fetching notes:', error);
+        return res.status(500).json({ message: 'An error occurred while fetching notes', error });
     }
 };
 
@@ -47,11 +49,8 @@ export const getAllNotes = async (req: Request, res: Response, next: NextFunctio
 export const getNoteById = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.body;
-        const result = await Note.findById(id)
-            .populate('categorie', 'name -_id')
-            .populate('user', 'username email  -_id');
-
-
+        const result = await NoteService.getNoteById(id);
+           
         // Ensure `result` is defined and contains the data you're expecting
         if (!result) {
             return res.status(404).json({ message: 'notes not found' });
@@ -71,60 +70,85 @@ export const getNoteById = async (req: Request, res: Response, next: NextFunctio
 export const updateNoteById = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id, title, content } = req.body;
-        const note = await Note.findByIdAndUpdate(id); // Modify query as needed
+        const note = await NoteService.updateNoteById({id,title,content}); // Modify query as needed
 
         if (!note) {
             throw new Error('categorie not found');
         }
-        note.title = title;
-        note.content = content;
-        note.save();
+       
         return res.status(200).json(note);
     } catch (error) {
         return res.status(500).json({ message: 'An error occurred while fetching categories', error });
     }
 }
+
 
 
 export const deleteNoteById = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        // Extract the ID from the request body
         const { id } = req.body;
-        const note = await Note.findByIdAndDelete(id); // Modify query as needed
 
-        if (!note) {
-            throw new Error('categorie not found');
+        if (!id) {
+            return res.status(400).json({ message: 'ID is required' });
         }
-        note.save();
-        return res.status(200).json(note);
+
+        // Call the service method to delete the note
+        const result = await NoteService.deleteNoteById(id);
+
+        // Check if the delete operation was successful
+        if (!result) {
+            return res.status(404).json({ message: 'Note not found or already deleted' });
+        }
+
+        // Return success response
+        return res.status(200).json({ message: 'Note deleted successfully' });
     } catch (error) {
-        return res.status(500).json({ message: 'An error occurred while fetching categories', error });
+        // Log the error for debugging
+        console.error('Error deleting note:', error);
+
+        // Return a proper error response
+        return res.status(500).json({ message: 'An error occurred while deleting the note', error: error instanceof Error ? error.message : 'Unknown error' });
     }
-}
+};
 
     // POST /search_and_filter_notes
 
+
 export const search_and_filter_notes = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        // Extract search and filter parameters from the request body
-        const { title, content, categorie, user, sortBy = 'createdAt', sortOrder = 'desc', page = 1, limit = 10 } = req.body;
+        // Extract parameters from the request body
+        const { searchTerm, exclude, sortBy = 'createdAt', sortOrder = 'desc' } = req.body;
+          const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = parseInt(req.query.limit as string, 10) || 10;
 
-        // Build the query object
+
+        // Initialize the query object
         const query: any = {};
-        if (title) {
-            query.title = new RegExp(title, 'i'); // Case-insensitive search for title
-        }
-        if (content) {
-            query.content = new RegExp(content, 'i'); // Case-insensitive search for content
-        }
-        if (categorie) {
-            query.categorie = categorie; // Filter by category
-        }
-        if (user) {
-            query.user = user; // Filter by user
+
+        // Handle the search term if provided
+        if (searchTerm) {
+            const searchRegExp = new RegExp(searchTerm, 'i'); // Case-insensitive search
+            query.$or = [
+                { title: searchRegExp },
+                { content: searchRegExp }
+            ];
         }
 
-        const result = await NoteService.search_and_filter_notes(query, sortBy,sortOrder,page,limit);
-       
+        // Handle exclusions if provided
+        if (exclude) {
+            const excludeTerms: RegExp[] = exclude.split(',').map((term: string) => new RegExp(term.trim(), 'i'));
+            query.$and = [
+                ...(query.$and || []), // Preserve existing $and conditions if any
+                { title: { $not: { $in: excludeTerms } } },
+                { content: { $not: { $in: excludeTerms } } }
+            ];
+        }
+
+        // Fetch the results using the NoteService
+        const result = await NoteService.search_and_filter_notes(query, sortBy, sortOrder, page, limit);
+
+        // Send the response
         res.json({ result });
     } catch (error) {
         console.error('Error searching and filtering notes:', error);
@@ -132,51 +156,8 @@ export const search_and_filter_notes = async (req: Request, res: Response, next:
     }
 };
 
+    
 // Function to export notes to Excel
 export async function exportNotesToExcel(req: Request, res: Response) {
-    try {
-        // Fetch all notes from the database
-        const notes = await Note.find()
-            .populate('categorie', 'name -_id')
-            .populate('user', 'username email -_id');
-
-        // Create a new workbook and worksheet
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Notes');
-
-        // Define the columns for the worksheet
-        worksheet.columns = [
-            { header: 'Title', key: 'title', width: 30 },
-            { header: 'Content', key: 'content', width: 50 },
-            { header: 'Categorie', key: 'categorie', width: 30 },
-            { header: 'User', key: 'user', width: 30 },
-            { header: 'Created At', key: 'createdAt', width: 20 },
-            { header: 'Updated At', key: 'updatedAt', width: 20 }
-        ];
-
-        // Add rows to the worksheet
-        notes.forEach(note => {
-            worksheet.addRow({
-                title: note.title,
-                content: note.content,
-                categorie: note.categorie ? note.categorie : 'N/A',
-                user: note.user ? `${note.user} (${note.user})` : 'N/A',
-                createdAt: note.createdAt.toISOString(),
-                updatedAt: note.updatedAt.toISOString()
-            });
-        });
-
-        // Set the response headers for file download
-        res.setHeader('Content-Disposition', 'attachment; filename=notes.xlsx');
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-
-        // Write the workbook to the response stream
-        await workbook.xlsx.write(res);
-
-        // End the response
-        res.end();
-    } catch (error) {
-        console.error('Error exporting notes to Excel:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-}
+ NoteService.exportNotesToExcel(req, res);
+} 

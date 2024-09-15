@@ -4,6 +4,15 @@ import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/environment';
+const nodemailer = require("nodemailer");
+const transport = nodemailer.createTransport({
+    host: "live.smtp.mailtrap.io",
+    port: 587,
+    auth: {
+      user: "api",
+      pass: "f39aac2e076229fc6b302cce3bf52e8f"
+    }
+  });
 
 class UserService {
 
@@ -96,36 +105,63 @@ class UserService {
     }
 
 
+  async requestpasswordreset(email:string):Promise<{verificationCode:string}>{
     
-    async resetPassword(email:string,newPassword:string): Promise<{ user: IUser }> {
-         console.log('Email:', email);
-    console.log('New Password:', newPassword);
-    
-    // Fetch the user by email
-    const user = await User.findOne({ email: email }); // Modify query as needed
+  try {
+    const user = await User.findOne({ email });
 
     if (!user) {
-        throw new Error('User not found');
+      throw 'No user found with this email.';
     }
 
-    try {
-       
+    const verificationCode = crypto.randomInt(100000, 999999).toString(); // 6-digit code
+    user.verificationCode = verificationCode;
+    user.verificationCodeExpires = new Date(Date.now() + 3600000); // 1 hour expiration
+    await user.save();
 
-        // Generate salt and hash password
-        const salt = await bcrypt.genSalt(10);
-        console.log('Generated Salt:', salt); // Log salt value
-        
-        const hashedPassword = await bcrypt.hash(newPassword, salt);
-        console.log('Hashed Password:', hashedPassword); // Log hashed password
+    console.log(user.verificationCode);
 
-        user.password = hashedPassword;
-        await user.save();
+    const mailOptions = {
+      from:"mailtrap@demomailtrap.com" ,
+      to: email,
+      subject: 'Password Reset Request',
+      text: `You requested a password reset. Use the following code to reset your password: ${verificationCode}`,
+    };
 
-        return { user 
-        }; // Return user wrapped in an object
-    } catch (err:unknown) {
-        throw new Error('Error hashing password: ' + err);
-    }}
+    await transport.sendMail(mailOptions);
+    console.log(verificationCode)
+   return{
+    verificationCode:verificationCode
+   }
+  } catch (error) {
+    console.log('error :'+error)
+  throw ('Server error.');
+  }
+  }
+
+  async resetpassword(email:string, verificationCode:string, newPassword:string):Promise<{message:string}>{
+  try {
+    const user = await User.findOne({
+      email,
+      verificationCode,
+      verificationCodeExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+   throw 'Invalid or expired verification code.';
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.verificationCode = undefined;
+    user.verificationCodeExpires = undefined;
+    await user.save();
+    return{
+        message:'Password has been reset successfully.'
+    }
+  } catch (error) {
+  throw ('Server error.');
+  }
+  }
 
 }
 

@@ -5,15 +5,18 @@ import Categorie, { ICategorie } from '../models/categorie.model';
 // Example POST endpoint to create a new category
 export const addCategorie = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { name, user } = req.body;
+        const { name } = req.body;
+        const user=req.userId;
 
         if (!name || !user) {
             return res.status(400).json({ message: 'Name and user are required.' });
         }
 
-        const newCategorie = new Categorie({ name, user });
-        await newCategorie.save();
-
+        const newCategorie = await CategorieService.addCategorie({
+            user,name
+        })
+        console.log(newCategorie)
+        
         return res.status(201).json(newCategorie);
     } catch (error) {
         console.error('Error creating category:', error);
@@ -23,9 +26,9 @@ export const addCategorie = async (req: Request, res: Response, next: NextFuncti
 
 
   export const getAllCategorie = async (req: Request, res: Response, next: NextFunction) => {
-    try {CategorieService
-        const result = await Categorie.find()
-        .populate('user','username email  -_id');
+    try {
+        const result = await CategorieService.getAllCategorie();
+        
 
         // Ensure `result` is defined and contains the data you're expecting
         if (!result ) {
@@ -45,13 +48,12 @@ export const addCategorie = async (req: Request, res: Response, next: NextFuncti
   export const updateCategorieById=async (req: Request, res: Response, next: NextFunction)=>{
     try{
         const {id,name}=req.body;
-        const categorie = await Categorie.findById(id); // Modify query as needed
+        const categorie = await CategorieService.updateCategorieById({id,name}); // Modify query as needed
 
     if (!categorie) {
         throw new Error('categorie not found');
     }
-    categorie.name=name;
-    categorie.save();
+    
     return res.status(200).json(categorie); 
     }catch(error){
         return res.status(500).json({ message: 'An error occurred while fetching categories',error });
@@ -62,13 +64,12 @@ export const addCategorie = async (req: Request, res: Response, next: NextFuncti
   export const deleteCategorieById=async (req: Request, res: Response, next: NextFunction)=>{
     try{
         const {id}=req.body;
-        const categorie = await Categorie.findByIdAndDelete(id); // Modify query as needed
+        const categorie = await CategorieService.deleteCategorieById(id); // Modify query as needed
 
     if (!categorie) {
         throw new Error('categorie not found'); 
     }
     
-    categorie.save();
     return res.status(200).json(categorie); 
     }catch(error){
        
